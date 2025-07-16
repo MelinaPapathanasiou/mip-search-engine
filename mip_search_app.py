@@ -1,5 +1,4 @@
-
- from flask import Flask, request, render_template_string, jsonify, send_from_directory
+from flask import Flask, request, render_template_string, jsonify, send_from_directory
 from pathlib import Path
 import json
 
@@ -84,4 +83,3 @@ def get_pdf(filename):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000)
-    
