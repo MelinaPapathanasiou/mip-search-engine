@@ -11,6 +11,7 @@ def search_keyword_in_file(file_path, keyword):
     with open(file_path, 'r', encoding='utf-8', errors='ignore') as file:
         lines = file.readlines()
         for idx, line in enumerate(lines):
+        print(f"Checking line: {line.strip()}")
             if keyword in line.lower():
                 context = '... ' + line.strip()[:200] + ' ...'
                 results.append({"line": idx + 1, "snippet": context})
@@ -74,3 +75,14 @@ def search():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000)
+from flask import send_from_directory
+
+PDF_FOLDER = Path("mip_pdfs")
+
+@app.route("/get_pdf/<filename>")
+def get_pdf(filename):
+    try:
+        return send_from_directory(PDF_FOLDER, filename, as_attachment=True)
+    except FileNotFoundError:
+        return f"Το αρχείο {filename} δεν βρέθηκε.", 404
+
