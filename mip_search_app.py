@@ -11,7 +11,7 @@ def search_keyword_in_file(file_path, keyword):
     with open(file_path, 'r', encoding='utf-8', errors='ignore') as file:
         lines = file.readlines()
         for idx, line in enumerate(lines):
-        print(f"Checking line: {line.strip()}")
+             print(f"Checking line: {line.strip()}")
             if keyword in line.lower():
                 context = '... ' + line.strip()[:200] + ' ...'
                 results.append({"line": idx + 1, "snippet": context})
