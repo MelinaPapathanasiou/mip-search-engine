@@ -73,13 +73,20 @@ def search():
         </body>
         </html>
     ''', query=query, results=matches)
+from difflib import get_close_matches
 
-@app.route("/get_pdf/<filename>")
-def get_pdf(filename):
-    try:
+@app.route("/get_pdf/<query>")
+def get_pdf_fuzzy(query):
+    query = query.lower()
+    pdf_files = [f.name for f in PDF_FOLDER.glob("*.pdf")]
+    
+    # Fuzzy match
+    matches = get_close_matches(query, pdf_files, n=1, cutoff=0.3)
+    
+    if matches:
+        filename = matches[0]
         return send_from_directory(PDF_FOLDER, filename, as_attachment=True)
-    except FileNotFoundError:
-        return f"Το αρχείο {filename} δεν βρέθηκε.", 404
-
+    else:
+        return f"Δεν βρέθηκε σχετικό αρχείο PDF για: {query}", 404
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000)
