@@ -96,7 +96,16 @@ def get_pdf_fuzzy(query):
         return send_from_directory(PDF_FOLDER, filename, as_attachment=True)
 
     # 3. Αν δεν βρέθηκε τίποτα
-    return abort(404)
+   return render_template_string('''
+    <html>
+    <head><title>Δεν Βρέθηκε</title></head>
+    <body>
+        <h2>Δεν βρέθηκε σχετικό αρχείο PDF για: <em>{{ query }}</em></h2>
+        <a href="/">🔙 Επιστροφή στην αναζήτηση</a>
+    </body>
+    </html>
+''', query=query), 404
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000)
