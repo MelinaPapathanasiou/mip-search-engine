@@ -81,7 +81,7 @@ def get_pdf_fuzzy(query):
     pdf_files = [f.name for f in PDF_FOLDER.glob("*.pdf")]
 
     # Fuzzy match
-    matches = get_close_matches(query, pdf_files, n=1, cutoff=0.3)
+    matches = get_close_matches(query, pdf_files, n=1, cutoff=0.2)
 
     if matches:
         filename = matches[0]
