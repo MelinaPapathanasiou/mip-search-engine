@@ -75,37 +75,23 @@ def search():
         </html>
     ''', query=query, results=matches)
 
-from difflib import get_close_matches
-
 @app.route("/get_pdf/<query>")
 def get_pdf_fuzzy(query):
     query = query.lower()
     pdf_files = [f.name for f in PDF_FOLDER.glob("*.pdf")]
 
-    # 1. Πρώτα: βρες αν η λέξη υπάρχει μέσα σε κάποιο filename
-    keyword_matches = [f for f in pdf_files if query in f.lower()]
+    # Fuzzy match
+    matches = get_close_matches(query, pdf_files, n=1, cutoff=0.3)
 
-    if keyword_matches:
-        filename = keyword_matches[0]  # πάρε το πρώτο σχετικό
-        return send_from_directory(PDF_FOLDER, filename, as_attachment=True)
+    if matches:
+        filename = matches[0]
+        pdf_path = PDF_FOLDER / filename
+        if pdf_path.exists():
+            return send_from_directory(PDF_FOLDER, filename, as_attachment=True)
 
-    # 2. Αν δεν βρέθηκε, κάνε fuzzy match
-    fuzzy_matches = get_close_matches(query, pdf_files, n=1, cutoff=0.3)
-    if fuzzy_matches:
-        filename = fuzzy_matches[0]
-        return send_from_directory(PDF_FOLDER, filename, as_attachment=True)
-
-    # 3. Αν δεν βρέθηκε τίποτα
-   return render_template_string('''
-    <html>
-    <head><title>Δεν Βρέθηκε</title></head>
-    <body>
-        <h2>Δεν βρέθηκε σχετικό αρχείο PDF για: <em>{{ query }}</em></h2>
-        <a href="/">🔙 Επιστροφή στην αναζήτηση</a>
-    </body>
-    </html>
-''', query=query), 404
+    return abort(404)
 
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000)
+
