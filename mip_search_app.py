@@ -75,20 +75,27 @@ def search():
         </html>
     ''', query=query, results=matches)
 
+from difflib import get_close_matches
+
 @app.route("/get_pdf/<query>")
 def get_pdf_fuzzy(query):
     query = query.lower()
     pdf_files = [f.name for f in PDF_FOLDER.glob("*.pdf")]
 
-    # Fuzzy match
-    matches = get_close_matches(query, pdf_files, n=1, cutoff=0.2)
+    # 1. Πρώτα: βρες αν η λέξη υπάρχει μέσα σε κάποιο filename
+    keyword_matches = [f for f in pdf_files if query in f.lower()]
 
-    if matches:
-        filename = matches[0]
-        pdf_path = PDF_FOLDER / filename
-        if pdf_path.exists():
-            return send_from_directory(PDF_FOLDER, filename, as_attachment=True)
-    
+    if keyword_matches:
+        filename = keyword_matches[0]  # πάρε το πρώτο σχετικό
+        return send_from_directory(PDF_FOLDER, filename, as_attachment=True)
+
+    # 2. Αν δεν βρέθηκε, κάνε fuzzy match
+    fuzzy_matches = get_close_matches(query, pdf_files, n=1, cutoff=0.3)
+    if fuzzy_matches:
+        filename = fuzzy_matches[0]
+        return send_from_directory(PDF_FOLDER, filename, as_attachment=True)
+
+    # 3. Αν δεν βρέθηκε τίποτα
     return abort(404)
 
 if __name__ == "__main__":
