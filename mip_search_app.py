@@ -1,5 +1,6 @@
-from flask import Flask, request, render_template_string, jsonify, send_from_directory
+from flask import Flask, request, render_template_string, jsonify, send_from_directory, abort
 from pathlib import Path
+from difflib import get_close_matches
 import json
 
 app = Flask(__name__)
@@ -73,24 +74,21 @@ def search():
         </body>
         </html>
     ''', query=query, results=matches)
-from difflib import get_close_matches
 
 @app.route("/get_pdf/<query>")
 def get_pdf_fuzzy(query):
     query = query.lower()
     pdf_files = [f.name for f in PDF_FOLDER.glob("*.pdf")]
-    
+
     # Fuzzy match
     matches = get_close_matches(query, pdf_files, n=1, cutoff=0.3)
-    
+
     if matches:
         filename = matches[0]
-       from flask import abort  # βάλε το στην αρχή αν δεν υπάρχει ήδη
-
-pdf_path = PDF_FOLDER / filename
-if pdf_path.exists():
-    return send_from_directory(PDF_FOLDER, filename, as_attachment=True)
-else:
+        pdf_path = PDF_FOLDER / filename
+        if pdf_path.exists():
+            return send_from_directory(PDF_FOLDER, filename, as_attachment=True)
+    
     return abort(404)
 
 if __name__ == "__main__":
