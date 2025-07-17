@@ -85,8 +85,13 @@ def get_pdf_fuzzy(query):
     
     if matches:
         filename = matches[0]
-        return send_from_directory(PDF_FOLDER, filename, as_attachment=True)
-    else:
-        return f"Δεν βρέθηκε σχετικό αρχείο PDF για: {query}", 404
+       from flask import abort  # βάλε το στην αρχή αν δεν υπάρχει ήδη
+
+pdf_path = PDF_FOLDER / filename
+if pdf_path.exists():
+    return send_from_directory(PDF_FOLDER, filename, as_attachment=True)
+else:
+    return abort(404)
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000)
