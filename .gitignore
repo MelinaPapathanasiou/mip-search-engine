@@ -1,0 +1,4 @@
+mip_texts/
+mip_pdfs/
+__pycache__/
+*.pyc
