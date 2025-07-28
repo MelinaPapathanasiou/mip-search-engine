@@ -91,6 +91,19 @@ def get_pdf_fuzzy(query):
 
     return abort(404)
 
+@app.route("/api/search")
+def api_search():
+    query = request.args.get("q", "").strip()
+    if not query:
+        return jsonify({"error": "Missing query parameter 'q'"}), 400
+
+    matches = []
+    for txt_file in TEXT_FOLDER.glob("*.txt"):
+        results = search_keyword_in_file(txt_file, query)
+        if results:
+            matches.append({"file": txt_file.name, "matches": results})
+
+    return jsonify({"query": query, "results": matches})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000)
