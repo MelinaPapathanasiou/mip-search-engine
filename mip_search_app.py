@@ -75,19 +75,39 @@ def search():
         </html>
     ''', query=query, results=matches)
 
-@app.route("/get_pdf/<query>")
-def get_pdf_fuzzy(query):
-    query = query.lower()
-    pdf_files = [f.name for f in PDF_FOLDER.glob("*.pdf")]
+from flask import send_file, jsonify
+import os
+from fuzzywuzzy import fuzz
 
-    # Fuzzy match
-    matches = get_close_matches(query, pdf_files, n=1, cutoff=0.3)
+PDF_FOLDER = "mip_pdfs"
 
-    if matches:
-        filename = matches[0]
-        pdf_path = PDF_FOLDER / filename
-        if pdf_path.exists():
-            return send_from_directory(PDF_FOLDER, filename, as_attachment=True)
+@app.route('/get_pdf/<query>')
+def get_multiple_pdfs(query):
+    # Σπάμε το query σε λέξεις
+    keywords = query.lower().split()
+    matched_files = []
+
+    # Βρίσκουμε όλα τα .pdf στον φάκελο
+    for filename in os.listdir(PDF_FOLDER):
+        if filename.endswith('.pdf'):
+            name_lower = filename.lower()
+            # Αν ταιριάζει έστω με μία λέξη του query
+            if any(fuzz.partial_ratio(word, name_lower) >= 70 for word in keywords):
+                matched_files.append({
+                    "filename": filename,
+                    "url": f"https://mipengine-melina.onrender.com/files/{filename}"
+                })
+
+    if not matched_files:
+        return jsonify({
+            "query": query,
+            "message": "No matching PDF files found."
+        }), 404
+
+    return jsonify({
+        "query": query,
+        "matched_files": matched_files
+    })
 
     return abort(404)
 
