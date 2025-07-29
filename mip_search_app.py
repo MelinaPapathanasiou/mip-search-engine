@@ -1,6 +1,7 @@
 from flask import Flask, request, render_template_string, jsonify, send_from_directory, abort
 from pathlib import Path
-from difflib import get_close_matches
+from fuzzywuzzy import fuzz
+import os
 import json
 
 app = Flask(__name__)
@@ -13,7 +14,6 @@ def search_keyword_in_file(file_path, keyword):
     with open(file_path, 'r', encoding='utf-8', errors='ignore') as file:
         lines = file.readlines()
         for idx, line in enumerate(lines):
-            print(f"Checking line: {line.strip()}")
             if keyword in line.lower():
                 context = '... ' + line.strip()[:200] + ' ...'
                 results.append({"line": idx + 1, "snippet": context})
@@ -75,23 +75,14 @@ def search():
         </html>
     ''', query=query, results=matches)
 
-from flask import send_file, jsonify
-import os
-from fuzzywuzzy import fuzz
-
-PDF_FOLDER = "mip_pdfs"
-
 @app.route('/get_pdf/<query>')
 def get_multiple_pdfs(query):
-    # Σπάμε το query σε λέξεις
     keywords = query.lower().split()
     matched_files = []
 
-    # Βρίσκουμε όλα τα .pdf στον φάκελο
     for filename in os.listdir(PDF_FOLDER):
         if filename.endswith('.pdf'):
             name_lower = filename.lower()
-            # Αν ταιριάζει έστω με μία λέξη του query
             if any(fuzz.partial_ratio(word, name_lower) >= 70 for word in keywords):
                 matched_files.append({
                     "filename": filename,
@@ -109,8 +100,6 @@ def get_multiple_pdfs(query):
         "matched_files": matched_files
     })
 
-    return abort(404)
-
 @app.route("/api/search")
 def api_search():
     query = request.args.get("q", "").strip()
@@ -127,4 +116,3 @@ def api_search():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000)
-
