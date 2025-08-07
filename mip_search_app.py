@@ -1,8 +1,7 @@
-from flask import Flask, request, render_template_string, jsonify, send_from_directory, abort
+from flask import Flask, request, render_template_string, jsonify
 from pathlib import Path
 from fuzzywuzzy import fuzz
 import os
-import json
 
 app = Flask(__name__)
 TEXT_FOLDER = Path("mip_texts")
@@ -113,6 +112,59 @@ def api_search():
             matches.append({"file": txt_file.name, "matches": results})
 
     return jsonify({"query": query, "results": matches})
+
+@app.route('/pretty_pdf/<query>')
+def pretty_pdf(query):
+    keywords = query.lower().split()
+    matched_files = []
+
+    for filename in os.listdir(PDF_FOLDER):
+        if filename.endswith('.pdf'):
+            name_lower = filename.lower()
+            if any(fuzz.partial_ratio(word, name_lower) >= 70 for word in keywords):
+                matched_files.append({
+                    "filename": filename,
+                    "url": f"/static/mip_pdfs/{filename}"
+                })
+
+    html = '''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>PDF Results</title>
+        <style>
+            body { font-family: Arial; background-color: #f4f4f4; padding: 2rem; }
+            h1 { color: #333; }
+            .pdf-card {
+                background: white;
+                padding: 1rem;
+                margin-bottom: 1rem;
+                border-radius: 8px;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+            }
+            .pdf-card a {
+                text-decoration: none;
+                color: #007BFF;
+                font-weight: bold;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Results for: <em>{{ query }}</em></h1>
+        {% if results %}
+            {% for file in results %}
+                <div class="pdf-card">
+                    📄 {{ file.filename }}<br>
+                    <a href="{{ file.url }}" target="_blank">Download PDF</a>
+                </div>
+            {% endfor %}
+        {% else %}
+            <p>No results found.</p>
+        {% endif %}
+    </body>
+    </html>
+    '''
+    return render_template_string(html, query=query, results=matched_files)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000)
