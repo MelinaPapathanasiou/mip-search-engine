@@ -86,7 +86,7 @@ def get_multiple_pdfs(query):
             if any(fuzz.partial_ratio(word, name_lower) >= 70 for word in keywords):
                 matched_files.append({
                     "filename": filename,
-                    "url": f"https://mipengine-melina.onrender.com/files/{filename}"
+                    "url": f"https://mipengine-melina.onrender.com/static/mip_pdfs/{filename}"
                 })
 
     if not matched_files:
