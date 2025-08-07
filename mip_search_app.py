@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template_string, jsonify
+from flask import Flask, request, render_template_string, jsonify, redirect
 from pathlib import Path
 from fuzzywuzzy import fuzz
 import os
@@ -112,6 +112,59 @@ def api_search():
             matches.append({"file": txt_file.name, "matches": results})
 
     return jsonify({"query": query, "results": matches})
+
+@app.route('/pretty_pdf', methods=['GET', 'POST'])
+def pretty_pdf_search_form():
+    if request.method == 'POST':
+        query = request.form.get('query', '').strip()
+        if query:
+          return redirect(f'/pretty_pdf/{query}')
+    
+    return render_template_string('''
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Search PDF Forms</title>
+            <style>
+                body { font-family: Arial; background-color: #f4f4f4; padding: 2rem; }
+                h1 { color: #333; }
+                form {
+                    background: white;
+                    padding: 1rem;
+                    border-radius: 8px;
+                    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+                    max-width: 500px;
+                    margin: auto;
+                }
+                input[type="text"] {
+                    width: 100%;
+                    padding: 0.5rem;
+                    margin-bottom: 1rem;
+                    border: 1px solid #ccc;
+                    border-radius: 4px;
+                }
+                input[type="submit"] {
+                    background-color: #007BFF;
+                    color: white;
+                    border: none;
+                    padding: 0.5rem 1rem;
+                    border-radius: 4px;
+                    cursor: pointer;
+                }
+                input[type="submit"]:hover {
+                    background-color: #0056b3;
+                }
+            </style>
+        </head>
+        <body>
+            <h1>🔍 Search Migration PDF Forms</h1>
+            <form method="POST">
+                <input type="text" name="query" placeholder="e.g. visa, domestic worker, employer liability" />
+                <input type="submit" value="Search" />
+            </form>
+        </body>
+        </html>
+    ''')
 
 @app.route('/pretty_pdf/<query>')
 def pretty_pdf(query):
