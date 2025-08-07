@@ -76,7 +76,7 @@ def search():
     ''', query=query, results=matches)
 
 @app.route('/get_pdf/<query>')
-def get_multiple_pdfs(query):
+def get_multiple_pdfs(query):. python 
     keywords = query.lower().split()
     matched_files = []
 
