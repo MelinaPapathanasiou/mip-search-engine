@@ -5,7 +5,7 @@ import os
 
 app = Flask(__name__)
 TEXT_FOLDER = Path("mip_texts")
-PDF_FOLDER = Path("mip_pdfs")
+PDF_FOLDER = Path("static/mip_pdfs")
 
 def search_keyword_in_file(file_path, keyword):
     keyword = keyword.lower()
