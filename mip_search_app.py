@@ -23,12 +23,19 @@ def index():
     return render_template_string('''
         <html>
         <head><title>Document Search</title></head>
-        <body>
+        <body style="font-family: Arial; padding: 2rem;">
             <h2>Search MIP Text Files</h2>
-            <form method="get" action="/search">
+            <form method="get" action="/search" style="margin-bottom: 1.5rem;">
                 <input type="text" name="q" placeholder="Enter keyword or phrase" style="width:300px"/>
                 <input type="submit" value="Search" />
             </form>
+
+            <hr style="margin: 1.5rem 0;">
+
+            <h3>🔎 Find official PDF forms</h3>
+            <a href="/pretty_pdf">
+                <button type="button" style="padding:0.5rem 1rem;">Open PDF Finder</button>
+            </a>
         </body>
         </html>
     ''')
