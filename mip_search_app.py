@@ -133,9 +133,9 @@ def api_search():
 @app.route('/pretty_pdf', methods=['GET', 'POST'])
 def pretty_pdf_search_form():
     if request.method == 'POST':
-        query = request.form.get('query', '').strip()
-        if query:
-          return redirect(f'/pretty_pdf/{quote(query)}')
+    query = request.form.get('query', '').strip()
+    if query:
+        return redirect(f'/pretty_pdf/{quote(query)}')
     
     return render_template_string('''
         <!DOCTYPE html>
