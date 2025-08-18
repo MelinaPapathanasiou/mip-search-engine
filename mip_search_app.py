@@ -2,18 +2,28 @@ from flask import Flask, request, render_template_string, jsonify, redirect
 from pathlib import Path
 from fuzzywuzzy import fuzz
 import os
+from urllib.parse import quote
+import unicodedata
+def normalize_text(text):
+    """Μετατρέπει κείμενο σε πεζά και αφαιρεί τόνους για καλύτερη σύγκριση."""
+    text = text.lower()
+    text = unicodedata.normalize("NFD", text)
+    text = "".join(ch for ch in text if unicodedata.category(ch) != "Mn")
+    return text
+
 
 app = Flask(__name__)
 TEXT_FOLDER = Path("mip_texts")
 PDF_FOLDER = Path("static/mip_pdfs")
 
 def search_keyword_in_file(file_path, keyword):
-    keyword = keyword.lower()
+    keyword = normalize_text(keyword)   # Χρησιμοποιούμε normalize_text αντί για lower()
+
     results = []
     with open(file_path, 'r', encoding='utf-8', errors='ignore') as file:
         lines = file.readlines()
         for idx, line in enumerate(lines):
-            if keyword in line.lower():
+            if keyword in normalize_text(line):   # και εδώ normalize_text
                 context = '... ' + line.strip()[:200] + ' ...'
                 results.append({"line": idx + 1, "snippet": context})
     return results
@@ -83,28 +93,28 @@ def search():
 
 @app.route('/get_pdf/<query>')
 def get_multiple_pdfs(query):
-    keywords = query.lower().split()
+    # κανονικοποίηση του query (πεζά + χωρίς τόνους)
+    q_norm = normalize_text(query)
     matched_files = []
 
     for filename in os.listdir(PDF_FOLDER):
-        if filename.endswith('.pdf'):
-            name_lower = filename.lower()
-            if any(fuzz.partial_ratio(word, name_lower) >= 70 for word in keywords):
-                matched_files.append({
-                    "filename": filename,
-                    "url": f"https://mipengine-melina.onrender.com/static/mip_pdfs/{filename}"
-                })
+        if not filename.endswith('.pdf'):
+            continue
+
+        # κανονικοποίηση και του filename
+        name_norm = normalize_text(filename)
+
+        # fuzzy match πάνω στις κανονικοποιημένες μορφές
+        if any(fuzz.partial_ratio(word, name_norm) >= 70 for word in q_norm.split()):
+            matched_files.append({
+                "filename": filename,
+                "url": f"/static/mip_pdfs/{filename}"
+            })
 
     if not matched_files:
-        return jsonify({
-            "query": query,
-            "message": "No matching PDF files found."
-        }), 404
+        return jsonify({"query": query, "message": "No matching PDF files found."}), 404
 
-    return jsonify({
-        "query": query,
-        "matched_files": matched_files
-    })
+    return jsonify({"query": query, "matched_files": matched_files})
 
 @app.route("/api/search")
 def api_search():
@@ -125,7 +135,7 @@ def pretty_pdf_search_form():
     if request.method == 'POST':
         query = request.form.get('query', '').strip()
         if query:
-          return redirect(f'/pretty_pdf/{query}')
+          return redirect(f'/pretty_pdf/{quote(query)}')
     
     return render_template_string('''
         <!DOCTYPE html>
@@ -175,56 +185,47 @@ def pretty_pdf_search_form():
 
 @app.route('/pretty_pdf/<query>')
 def pretty_pdf(query):
-    keywords = query.lower().split()
+    q_norm = normalize_text(query)
     matched_files = []
 
     for filename in os.listdir(PDF_FOLDER):
-        if filename.endswith('.pdf'):
-            name_lower = filename.lower()
-            if any(fuzz.partial_ratio(word, name_lower) >= 70 for word in keywords):
-                matched_files.append({
-                    "filename": filename,
-                    "url": f"/static/mip_pdfs/{filename}"
-                })
+        if not filename.endswith('.pdf'):
+            continue
 
-    html = '''
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>PDF Results</title>
-        <style>
-            body { font-family: Arial; background-color: #f4f4f4; padding: 2rem; }
-            h1 { color: #333; }
-            .pdf-card {
-                background: white;
-                padding: 1rem;
-                margin-bottom: 1rem;
-                border-radius: 8px;
-                box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-            }
-            .pdf-card a {
-                text-decoration: none;
-                color: #007BFF;
-                font-weight: bold;
-            }
-        </style>
-    </head>
-    <body>
-        <h1>Results for: <em>{{ query }}</em></h1>
-        {% if results %}
-            {% for file in results %}
-                <div class="pdf-card">
-                    📄 {{ file.filename }}<br>
-                    <a href="{{ file.url }}" target="_blank">Download PDF</a>
-                </div>
+        name_norm = normalize_text(filename)
+
+        if any(fuzz.partial_ratio(word, name_norm) >= 70 for word in q_norm.split()):
+            matched_files.append({
+                "filename": filename,
+                "url": f"/static/mip_pdfs/{filename}"
+            })
+
+    if not matched_files:
+        return render_template_string('''
+            <html>
+            <head><title>No PDFs Found</title></head>
+            <body style="font-family: Arial; padding: 2rem;">
+                <h2>❌ No matching PDF files found for "{{ query }}"</h2>
+                <a href="/">⬅ Back to search</a>
+            </body>
+            </html>
+        ''', query=query)
+
+    return render_template_string('''
+        <html>
+        <head><title>PDF Results</title></head>
+        <body style="font-family: Arial; padding: 2rem;">
+            <h2>📂 Matching PDFs for "{{ query }}"</h2>
+            <ul>
+            {% for file in matched_files %}
+                <li><a href="{{ file.url }}" target="_blank">{{ file.filename }}</a></li>
             {% endfor %}
-        {% else %}
-            <p>No results found.</p>
-        {% endif %}
-    </body>
-    </html>
-    '''
-    return render_template_string(html, query=query, results=matched_files)
+            </ul>
+            <a href="/">⬅ Back to search</a>
+        </body>
+        </html>
+    ''', query=query, matched_files=matched_files)
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000)
