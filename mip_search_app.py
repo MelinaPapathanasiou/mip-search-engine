@@ -3,7 +3,9 @@ from pathlib import Path
 from fuzzywuzzy import fuzz
 import os
 from urllib.parse import quote
+from datetime import datetime
 import unicodedata
+
 def normalize_text(text):
     """Μετατρέπει κείμενο σε πεζά και αφαιρεί τόνους για καλύτερη σύγκριση."""
     text = text.lower()
@@ -11,19 +13,24 @@ def normalize_text(text):
     text = "".join(ch for ch in text if unicodedata.category(ch) != "Mn")
     return text
 
+def format_size(bytes_):
+    for unit in ['B','KB','MB','GB']:
+        if bytes_ < 1024.0:
+            return f"{bytes_:.1f} {unit}"
+        bytes_ /= 1024.0
+    return f"{bytes_:.1f} TB"
 
 app = Flask(__name__)
 TEXT_FOLDER = Path("mip_texts")
 PDF_FOLDER = Path("static/mip_pdfs")
 
 def search_keyword_in_file(file_path, keyword):
-    keyword = normalize_text(keyword)   # Χρησιμοποιούμε normalize_text αντί για lower()
-
+    keyword = normalize_text(keyword)
     results = []
     with open(file_path, 'r', encoding='utf-8', errors='ignore') as file:
         lines = file.readlines()
         for idx, line in enumerate(lines):
-            if keyword in normalize_text(line):   # και εδώ normalize_text
+            if keyword in normalize_text(line):
                 context = '... ' + line.strip()[:200] + ' ...'
                 results.append({"line": idx + 1, "snippet": context})
     return results
@@ -93,7 +100,6 @@ def search():
 
 @app.route('/get_pdf/<query>')
 def get_multiple_pdfs(query):
-    # κανονικοποίηση του query (πεζά + χωρίς τόνους)
     q_norm = normalize_text(query)
     matched_files = []
 
@@ -101,14 +107,17 @@ def get_multiple_pdfs(query):
         if not filename.endswith('.pdf'):
             continue
 
-        # κανονικοποίηση και του filename
         name_norm = normalize_text(filename)
 
-        # fuzzy match πάνω στις κανονικοποιημένες μορφές
         if any(fuzz.partial_ratio(word, name_norm) >= 70 for word in q_norm.split()):
+            file_path = os.path.join(str(PDF_FOLDER), filename)
+            size_bytes = os.path.getsize(file_path)
+            mtime = os.path.getmtime(file_path)
             matched_files.append({
                 "filename": filename,
-                "url": f"/static/mip_pdfs/{filename}"
+                "url": f"/static/mip_pdfs/{filename}",
+                "size": format_size(size_bytes),
+                "modified": datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M")
             })
 
     if not matched_files:
@@ -136,7 +145,7 @@ def pretty_pdf_search_form():
         query = request.form.get('query', '').strip()
         if query:
             return redirect(f'/pretty_pdf/{quote(query)}')
-    
+
     return render_template_string('''
         <!DOCTYPE html>
         <html>
@@ -144,7 +153,6 @@ def pretty_pdf_search_form():
             <title>Search PDF Forms</title>
             <style>
                 body { font-family: Arial; background-color: #f4f4f4; padding: 2rem; }
-
                 h1 { color: #333; }
                 form {
                     background: white;
@@ -196,10 +204,20 @@ def pretty_pdf(query):
         name_norm = normalize_text(filename)
 
         if any(fuzz.partial_ratio(word, name_norm) >= 70 for word in q_norm.split()):
+            file_path = os.path.join(str(PDF_FOLDER), filename)
+            size_bytes = os.path.getsize(file_path)
+            mtime = os.path.getmtime(file_path)
+
             matched_files.append({
                 "filename": filename,
-                "url": f"/static/mip_pdfs/{filename}"
+                "url": f"/static/mip_pdfs/{filename}",
+                "size": format_size(size_bytes),
+                "modified": datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M"),
+                "modified_ts": mtime  # για ταξινόμηση με ακρίβεια
             })
+
+    # ταξινόμηση: πιο πρόσφατα πρώτα
+    matched_files.sort(key=lambda x: x["modified_ts"], reverse=True)
 
     if not matched_files:
         return render_template_string('''
@@ -214,19 +232,40 @@ def pretty_pdf(query):
 
     return render_template_string('''
         <html>
-        <head><title>PDF Results</title></head>
-        <body style="font-family: Arial; padding: 2rem;">
+        <head>
+            <title>PDF Results</title>
+            <style>
+                body { font-family: Arial; padding: 2rem; background: #f9f9f9; }
+                h2 { color: #333; }
+                ul { list-style: none; padding: 0; }
+                li {
+                    background: white;
+                    padding: 0.8rem 1rem;
+                    margin-bottom: 0.7rem;
+                    border-radius: 8px;
+                    box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+                }
+                a { font-weight: bold; color: #007BFF; text-decoration: none; }
+                a:hover { text-decoration: underline; }
+                .meta { color: #666; font-size: 0.9rem; margin-left: 8px; }
+                .modified { color: #999; font-size: 0.85rem; font-style: italic; margin-left: 6px; }
+            </style>
+        </head>
+        <body>
             <h2>📂 Matching PDFs for "{{ query }}"</h2>
             <ul>
             {% for file in matched_files %}
-                <li><a href="{{ file.url }}" target="_blank">{{ file.filename }}</a></li>
+                <li>
+                  <a href="{{ file.url }}" target="_blank">{{ file.filename }}</a>
+                  <span class="meta">{{ file.size }}</span>
+                  <span class="modified">{{ file.modified }}</span>
+                </li>
             {% endfor %}
             </ul>
             <a href="/">⬅ Back to search</a>
         </body>
         </html>
     ''', query=query, matched_files=matched_files)
-
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000)
