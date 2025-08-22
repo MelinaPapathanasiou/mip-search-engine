@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template_string, jsonify, redirect
+from flask import Flask, request, render_template_string, jsonify, redirect, Response
 from pathlib import Path
 from fuzzywuzzy import fuzz
 import os
@@ -138,6 +138,47 @@ def api_search():
             matches.append({"file": txt_file.name, "matches": results})
 
     return jsonify({"query": query, "results": matches})
+
+# -------- NEW: text-friendly endpoint for Easy-Peasy (no parsing needed) --------
+@app.route("/api/search_text")
+def api_search_text():
+    query = request.args.get("q", "").strip()
+    if not query:
+        return Response(
+            "❌ Empty query.\n\n👉 Open PDF Finder: https://mipengine-melina.onrender.com/pretty_pdf",
+            mimetype="text/plain; charset=utf-8"
+        )
+
+    # Χρησιμοποιούμε την ίδια λογική με το /api/search
+    matches = []
+    for txt_file in TEXT_FOLDER.glob("*.txt"):
+        results = search_keyword_in_file(txt_file, query)
+        if results:
+            matches.append({"file": txt_file.name, "matches": results})
+
+    lines = []
+    if matches:
+        lines.append(f"📄 Found {len(matches)} file(s) for “{query}”:\n")
+        for item in matches:
+            lines.append(f"• {item['file']}")
+            # δείξε έως 6 αποσπάσματα ανά αρχείο για να μη γίνεται «σεντόνι»
+            for m in item["matches"][:6]:
+                line_no = m.get("line", "?")
+                snippet = (m.get("snippet") or "").strip()
+                lines.append(f"  - line {line_no}: {snippet}")
+            lines.append("")  # κενή γραμμή μεταξύ αρχείων
+        # link στο Pretty PDF με σωστό encoding
+        lines.append(f"🔎 See matching PDFs: https://mipengine-melina.onrender.com/pretty_pdf/{quote(query)}")
+    else:
+        lines.append(f"❌ No matches found for “{query}”.")
+        lines.append("")
+        lines.append("👉 Try the PDF Finder (official forms & docs):")
+        lines.append("https://mipengine-melina.onrender.com/pretty_pdf")
+
+    text = "\n".join(lines)
+    return Response(text, mimetype="text/plain; charset=utf-8")
+# -------------------------------------------------------------------------------
+
 
 @app.route('/pretty_pdf', methods=['GET', 'POST'])
 def pretty_pdf_search_form():
