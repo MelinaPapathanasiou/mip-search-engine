@@ -159,7 +159,7 @@ def api_search_text():
         lines = [f"📄 Found {len(matches)} file(s) for “{query}”:\n"]
         for item in matches:
             lines.append(f"• {item.get('file', '(no file)')}")
-            # δείξε έως 6 αποσπάσματα ανά αρχείο (βάλ’ το [:3] αν το θες πιο σύντομο)
+            # δείξε έως 6 αποσπάσματα ανά αρχείο (βάλε [:3] αν θες πιο σύντομο)
             for m in item.get("matches", [])[:6]:
                 line_no = m.get("line", "?")
                 snippet = (m.get("snippet") or "").strip()
@@ -175,7 +175,6 @@ def api_search_text():
         "message": f"❌ No matches found for “{query}”.\n\n👉 Try the PDF Finder:\nhttps://mipengine-melina.onrender.com/pretty_pdf"
     })
 # ---------------------------------------------------
-
 @app.route('/pretty_pdf', methods=['GET', 'POST'])
 def pretty_pdf_search_form():
     if request.method == 'POST':
