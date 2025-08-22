@@ -177,7 +177,7 @@ def api_search_text():
         lines.append("https://mipengine-melina.onrender.com/pretty_pdf")
 
     text = "\n".join(lines)
-    return Response(text, mimetype="text/plain; charset=utf-8")
+    return jsonify({"message": text})
 # -----------------------------------------------------
 @app.route('/pretty_pdf', methods=['GET', 'POST'])
 def pretty_pdf_search_form():
