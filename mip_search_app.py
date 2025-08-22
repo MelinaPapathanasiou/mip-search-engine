@@ -4,6 +4,7 @@ from fuzzywuzzy import fuzz
 import os
 from urllib.parse import quote
 from datetime import datetime
+from flask_cors import CORS
 import unicodedata
 
 def normalize_text(text):
@@ -21,6 +22,8 @@ def format_size(bytes_):
     return f"{bytes_:.1f} TB"
 
 app = Flask(__name__)
+CORS(app, resources={r"/api/*": {"origins": "*"}})  # <— ΝΕΟ
+
 TEXT_FOLDER = Path("mip_texts")
 PDF_FOLDER = Path("static/mip_pdfs")
 
