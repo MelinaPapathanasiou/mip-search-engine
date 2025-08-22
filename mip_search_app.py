@@ -142,42 +142,43 @@ def api_search():
 
     return jsonify({"query": query, "results": matches})
 
-# -------- NEW: JSON endpoint for Easy-Peasy --------
+# -------- FIXED: Text endpoint for Easy-Peasy --------
 @app.route("/api/search_text")
 def api_search_text():
     query = request.args.get("q", "").strip()
     if not query:
-        return jsonify({
-            "message": "❌ Empty query.\n\n👉 Open PDF Finder: https://mipengine-melina.onrender.com/pretty_pdf"
-        })
+        return Response(
+            "❌ Empty query.\n\n👉 Open PDF Finder: https://mipengine-melina.onrender.com/pretty_pdf",
+            mimetype="text/plain; charset=utf-8"
+        )
 
-    # ίδια λογική με /api/search
     matches = []
     for txt_file in TEXT_FOLDER.glob("*.txt"):
         results = search_keyword_in_file(txt_file, query)
         if results:
             matches.append({"file": txt_file.name, "matches": results})
 
+    lines = []
     if matches:
-        lines = [f"📄 Found {len(matches)} file(s) for “{query}”:\n"]
+        lines.append(f"📄 Found {len(matches)} file(s) for “{query}”:\n")
         for item in matches:
-            lines.append(f"• {item.get('file', '(no file)')}")
-            # δείξε έως 6 αποσπάσματα ανά αρχείο (βάλε [:3] αν θες πιο σύντομο)
-            for m in item.get("matches", [])[:6]:
+            lines.append(f"• {item['file']}")
+            for m in item["matches"][:6]:  # δείξε max 6
                 line_no = m.get("line", "?")
                 snippet = (m.get("snippet") or "").strip()
                 lines.append(f"  - line {line_no}: {snippet}")
-            lines.append("")  # κενή γραμμή μεταξύ αρχείων
+            lines.append("")  # κενό ανάμεσα σε αρχεία
 
         lines.append(f"🔎 See matching PDFs: https://mipengine-melina.onrender.com/pretty_pdf/{quote(query)}")
-        text = "\n".join(lines)
-        return jsonify({"message": text})
+    else:
+        lines.append(f"❌ No matches found for “{query}”.")
+        lines.append("")
+        lines.append("👉 Try the PDF Finder (official forms & docs):")
+        lines.append("https://mipengine-melina.onrender.com/pretty_pdf")
 
-    # no matches
-    return jsonify({
-        "message": f"❌ No matches found for “{query}”.\n\n👉 Try the PDF Finder:\nhttps://mipengine-melina.onrender.com/pretty_pdf"
-    })
-# ---------------------------------------------------
+    text = "\n".join(lines)
+    return Response(text, mimetype="text/plain; charset=utf-8")
+# -----------------------------------------------------
 @app.route('/pretty_pdf', methods=['GET', 'POST'])
 def pretty_pdf_search_form():
     if request.method == 'POST':
